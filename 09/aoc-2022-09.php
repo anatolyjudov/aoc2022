@@ -126,7 +126,7 @@ class Movable
     }
 }
 
-class RopeEnd extends Movable
+class RopeKnot extends Movable
 {
     public Point $pos;
 
@@ -144,7 +144,7 @@ class RopeEnd extends Movable
     }
 }
 
-class RopeHead extends RopeEnd
+class RopeHead extends RopeKnot
 {
     public function move($move) {
         if (!$this->isValid($move)) die();
@@ -154,7 +154,7 @@ class RopeHead extends RopeEnd
     }
 }
 
-class RopePullable extends RopeEnd
+class RopePullable extends RopeKnot
 {
     public function pullTo($point) {
         $this->pos = $this->newPosPull($point, $this->pos);
@@ -209,7 +209,7 @@ class Rope
         }
     }
 
-    public function getTail(): RopeEnd
+    public function getTail(): RopeKnot
     {
         return $this->body[sizeof($this->body) - 1];
     }
