@@ -24,7 +24,7 @@ while($line = fgets($fp)) {
 
         $drawPos = ($cycle - 1) % 40;
         echo ($drawPos >= ($x - 1) && $drawPos <= ($x + 1)) ? '#' : '.';
-        if ($drawPos === 39) echo "\r\n";
+        if ($drawPos === 39) echo PHP_EOL;
 
         $cycle++;
 
