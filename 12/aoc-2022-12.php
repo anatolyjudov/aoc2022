@@ -25,11 +25,11 @@ foreach($fileData as $row) {
     $map[] = $line;
 }
 
-$e = array_fill(0, sizeof($map), array_fill(0, sizeof($map[0]), -1));
+$counts = array_fill(0, sizeof($map), array_fill(0, sizeof($map[0]), -1));
 
-function stepFrom(int $y, int $x, int $step, array &$e, array &$map, int &$min0)
+function stepFrom(int $y, int $x, int $step, array &$counts, array &$map, int &$min0)
 {
-    $e[$y][$x] = $step;
+    $counts[$y][$x] = $step;
 
     if ($map[$y][$x] === 0 && ($min0 === -1 || $step < $min0)) {
         $min0 = $step;
@@ -40,14 +40,14 @@ function stepFrom(int $y, int $x, int $step, array &$e, array &$map, int &$min0)
         $yt = $y + $dy;
         if (($xt < 0) || ($yt < 0) || ($yt >= sizeof($map)) || ($xt >= sizeof($map[0]))) continue;
         if ($map[$y][$x] - $map[$yt][$xt] > 1) continue;
-        if ($e[$yt][$xt] <= ($step + 1) && ($e[$yt][$xt] !== -1)) continue;
+        if ($counts[$yt][$xt] <= ($step + 1) && ($counts[$yt][$xt] !== -1)) continue;
 
-        stepFrom($yt, $xt, $step + 1, $e, $map, $min0);
+        stepFrom($yt, $xt, $step + 1, $counts, $map, $min0);
     }
 }
 
 $min0 = -1;
-stepFrom($end[0], $end[1], 0, $e, $map, $min0);
+stepFrom($end[0], $end[1], 0, $counts, $map, $min0);
 
-printf('First star: %d' . PHP_EOL, $e[$start[0]][$start[1]]);
-printf('Second star: %d' . PHP_EOL, $min0);
+printf('First star: %d%s', $counts[$start[0]][$start[1]], PHP_EOL);
+printf('Second star: %d%s', $min0, PHP_EOL);
