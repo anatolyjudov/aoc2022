@@ -45,7 +45,6 @@ for($y = 0; $y < $lim; $y++) {
     for ($i = 1; $i < sizeof($slices); $i++) {
         if ($last < $slices[$i][0]) {
             $frequency = ($last + 1) * $lim + $y;
-
             printf('Found %d, %d%s', ($last + 1), $y, PHP_EOL);
             break 2;
         }
