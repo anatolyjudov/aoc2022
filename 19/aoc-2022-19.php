@@ -123,15 +123,6 @@ class Cost
         }
     }
 
-    public function p(): void
-    {
-        $rs = [];
-        foreach (ResourcesEnum::all() as $r) {
-            $rs[] =  $r . ': ' . $this->resourcesCost[$r];
-        }
-        echo implode(', ', $rs) . PHP_EOL;
-    }
-
     public function set($r, $cost): self
     {
         $this->resourcesCost[$r] = (int) $cost;
@@ -141,43 +132,6 @@ class Cost
     public function get($r): int
     {
         return $this->resourcesCost[$r];
-    }
-
-    public function plus(Cost $inc): self
-    {
-        foreach (ResourcesEnum::all() as $r) {
-            $this->resourcesCost[$r] += $inc->get($r);
-        }
-        return $this;
-    }
-
-    public function spend(Cost $inc): self
-    {
-        foreach (ResourcesEnum::all() as $r) {
-            $this->resourcesCost[$r] -= $inc->get($r);
-        }
-        return $this;
-    }
-
-    public function isEnough(Cost $cost): bool
-    {
-        $res = true;
-
-        foreach (ResourcesEnum::all() as $r) {
-            if ($this->resourcesCost[$r] < $cost->get($r)) {
-                $res = false;
-                break;
-            }
-        }
-
-        return $res;
-    }
-
-    public function clone(): Cost
-    {
-        $clone = new Cost();
-        $clone->resourcesCost = $this->resourcesCost;
-        return $clone;
     }
 }
 
@@ -213,17 +167,6 @@ class StrategyHelper
         }
 
         return $maxMinutes;
-    }
-
-    public static function getResourceForRobot($r): string
-    {
-        switch ($r) {
-            case RobotsEnum::OR: return ResourcesEnum::OR;
-            case RobotsEnum::CL: return ResourcesEnum::CL;
-            case RobotsEnum::OB: return ResourcesEnum::OB;
-            case RobotsEnum::GE: return ResourcesEnum::GE;
-            default: die();
-        }
     }
 
     public static function getRobotForResource($res): string
