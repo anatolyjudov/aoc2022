@@ -7,10 +7,22 @@ const ROOT_NAME       = 'root';
 const HUMAN_NAME      = 'humn';
 
 $functions = [
-    '+' => function($a, $b) { return $a + $b; },
-    '-' => function($a, $b) { return $a - $b; },
-    '*' => function($a, $b) { return $a * $b; },
-    '/' => function($a, $b) { return $a / $b; },
+    '+' => function($a, $b) {
+            //p($a, '+', $b, '=', $a + $b);
+            return $a + $b;
+        },
+    '-' => function($a, $b) {
+            //p($a, '-', $b, '=', $a - $b);
+            return $a - $b;
+        },
+    '*' => function($a, $b) {
+            //p($a, '*', $b, '=', $a * $b);
+            return $a * $b;
+        },
+    '/' => function($a, $b) {
+            //p($a, '/', $b, '=', $a / $b);
+            return $a / $b;
+        },
 ];
 
 $monkeys = [];
@@ -44,9 +56,60 @@ foreach (explode(PHP_EOL, file_get_contents('input.txt')) as $item) {
 
 printf('First star: %d%s', getMonkeyValue(ROOT_NAME, $monkeys), PHP_EOL);
 
-function resolveMonkey($lookForName, &$monkeys, &$monkeys2)
+// prepare for the second task
+$monkeys2 = $monkeys;
+unset($monkeys2[HUMAN_NAME]);
+unset($monkeys2[ROOT_NAME]);
+
+// split root
 {
-    if (isset($monkeys2[$lookForName])) return;
+    $mainBranch = '';
+    $otherBranchValue = 0;
+
+    foreach (['a', 'b'] as $ab) {
+        $value = getMonkeyValue($monkeys[ROOT_NAME][$ab], $monkeys2);
+        if ($value === false) {
+            $mainBranch = $monkeys[ROOT_NAME][$ab];
+        } else {
+            $otherBranchValue = $value;
+        }
+    }
+}
+
+$monkeys3 = [];
+resolveMonkey(HUMAN_NAME, $monkeys2, $monkeys3);
+
+printf('Second star: %d%s', getMonkeyValue(HUMAN_NAME, $monkeys3), PHP_EOL);
+
+function recursiveCopy($name, &$monkeys, &$monkeysRes)
+{
+    if (!isset($monkeys[$name])) {
+        p('Need to resolve ' . $name);
+        resolveMonkey($name, $monkeys, $monkeysRes);
+        return;
+    }
+    $monkeysRes[$name] = $monkeys[$name];
+    if ($monkeysRes[$name]['type'] === MONKEY_FUNCTION) {
+        recursiveCopy($monkeysRes[$name]['a'], $monkeys, $monkeysRes);
+        recursiveCopy($monkeysRes[$name]['b'], $monkeys, $monkeysRes);
+    }
+}
+
+function resolveMonkey($lookForName, &$monkeys, &$monkeysRes)
+{
+    global $mainBranch, $otherBranchValue;
+    if ($lookForName === $mainBranch) {
+        $monkeysRes[$mainBranch] = [
+            'type'  => MONKEY_NUMBER,
+            'value' => $otherBranchValue
+        ];
+        return;
+    }
+
+    if (isset($monkeys[$lookForName]) && $monkeys[$lookForName]['type'] === MONKEY_NUMBER) {
+        $monkeysRes[$lookForName] = $monkeys[$lookForName];
+        return;
+    }
 
     $deps = findDependentMonkey($lookForName, $monkeys);
     if (sizeof($deps) > 1) {
@@ -54,17 +117,15 @@ function resolveMonkey($lookForName, &$monkeys, &$monkeys2)
         die('Found more than one dependency for ' . $lookForName);
     }
     if (sizeof($deps) === 0) {
-        if (empty($monkeys[$lookForName])) {
-            die('Couldnt resolve ' . $lookForName . ' not found not as dependency not as formula');
+        if (isset($monkeys[$lookForName]) && ($monkeys[$lookForName]['type'] === MONKEY_FUNCTION)) {
+            recursiveCopy($lookForName, $monkeys, $monkeysRes);
+            return;
         }
-        $monkeys2[$lookForName] = $monkeys[$lookForName];
-        unset($monkeys[$lookForName]);
-        resolveMonkey($monkeys2[$lookForName]['a'], $monkeys, $monkeys2);
-        resolveMonkey($monkeys2[$lookForName]['b'], $monkeys, $monkeys2);
-        return;
+        die('Error trying to resolve ' . $lookForName);
     }
     $dep = $deps[0];
 
+    // create reverted statement
     $m = $monkeys[$dep];
     unset($monkeys[$dep]);
     $m2 = ['type' => MONKEY_FUNCTION];
@@ -72,8 +133,10 @@ function resolveMonkey($lookForName, &$monkeys, &$monkeys2)
         $m2['a'] = $dep;
         $m2['op'] = '-';
         if ($m['a'] === $lookForName) {
+            // dep = lfn + smth
             $m2['b'] = $m['b'];
         } else {
+            // dep = smth + lfn
             $m2['b'] = $m['a'];
         }
     }
@@ -87,28 +150,36 @@ function resolveMonkey($lookForName, &$monkeys, &$monkeys2)
         }
     }
     if ($m['op'] === '/') {
-        $m2['a'] = $dep;
         if ($m['a'] === $lookForName) {
+            // dep = lfn / smth
+            $m2['a'] = $dep;
             $m2['b'] = $m['b'];
             $m2['op'] = '*';
         } else {
-            $m2['b'] = $m['a'];
+            // dep = smth / lfn
+            $m2['a'] = $m['a'];
+            $m2['b'] = $dep;
             $m2['op'] = '/';
         }
     }
     if ($m['op'] === '-') {
-        $m2['a'] = $dep;
         if ($m['a'] === $lookForName) {
+            // dep = lfn - smth
+            $m2['a'] = $dep;
             $m2['b'] = $m['b'];
             $m2['op'] = '+';
         } else {
-            $m2['b'] = $m['a'];
+            // dep = smth - lfn
+            $m2['a'] = $m['a'];
+            $m2['b'] = $dep;
             $m2['op'] = '-';
         }
     }
-    $monkeys2[$lookForName] = $m2;
-    resolveMonkey($m2['a'], $monkeys, $monkeys2);
-    resolveMonkey($m2['b'], $monkeys, $monkeys2);
+
+    // save reverted to the new monkey array
+    $monkeysRes[$lookForName] = $m2;
+    resolveMonkey($m2['a'], $monkeys, $monkeysRes);
+    resolveMonkey($m2['b'], $monkeys, $monkeysRes);
 }
 
 function findDependentMonkey(string $lookForName, &$monkeys): array
@@ -116,10 +187,7 @@ function findDependentMonkey(string $lookForName, &$monkeys): array
     $dependent = [];
     foreach($monkeys as $name => $monkey) {
         if ($monkey['type'] !== MONKEY_FUNCTION) continue;
-        if ($monkey['a'] === $lookForName || $monkey['b'] === $lookForName) {
-            if ($name === ROOT_NAME) {
-                die('Found dependency on root');
-            }
+        if (($monkey['a'] === $lookForName) || ($monkey['b'] === $lookForName)) {
             $dependent[] = $name;
         }
     }
@@ -128,30 +196,29 @@ function findDependentMonkey(string $lookForName, &$monkeys): array
 
 function getMonkeyValue(string $name, array &$monkeys)
 {
-    global $recCount;
     global $functions;
 
-    $recCount[$name] = ($recCount[$name] ?? 0) + 1;
-    if ($recCount[$name] > 2) {
-        echo 'Probably dead loop here ' . $name . PHP_EOL;
-        var_dump($recCount);
-        die();
+    if (empty($monkeys[$name])) {
+        //p('Don\'t know this monkey: ' . $name);
+        return false;
     }
 
-    if (empty($monkeys[$name])) die('Dont know this monkey: ' . $name);
-
     if ($monkeys[$name]['type'] === MONKEY_NUMBER) {
-        return $monkeys[$name]['value'];
+        $result = $monkeys[$name]['value'];
+        return $result;
     }
 
     if ($monkeys[$name]['type'] === MONKEY_FUNCTION) {
         $a = getMonkeyValue($monkeys[$name]['a'], $monkeys);
         $b = getMonkeyValue($monkeys[$name]['b'], $monkeys);
-        return $functions[$monkeys[$name]['op']]($a, $b);
+        if ($a === false || $b === false) return false;
+        $result = $functions[$monkeys[$name]['op']]($a, $b);
+        return $result;
     }
 
     if ($monkeys[$name]['type'] === MONKEY_EQUAL) {
-        return getMonkeyValue($monkeys[$name]['value'], $monkeys);
+        $result = getMonkeyValue($monkeys[$name]['value'], $monkeys);
+        return $result;
     }
 
     die('Dont know the type of this monkey ' . $monkeys[$name]['type']);
@@ -162,11 +229,23 @@ function printMonkeys(array &$monkeys)
     foreach ($monkeys as $name => $monkey) {
         echo $name . ': ';
         if ($monkey['type'] === MONKEY_NUMBER || $monkey['type'] === MONKEY_EQUAL) {
-            echo $monkey['value']->getString();
+            echo $monkey['value'];
         }
         if ($monkey['type'] === MONKEY_FUNCTION) {
             echo $monkey['a'] . ' ' . $monkey['op'] . ' ' . $monkey['b'];
         }
         echo PHP_EOL;
     }
+}
+
+function p(...$args)
+{
+    foreach ($args as $arg) {
+        if (is_array($arg) || is_object($arg)) {
+            print_r($arg);
+            continue;
+        }
+        echo $arg . ' ';
+    }
+    echo PHP_EOL;
 }
